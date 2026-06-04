@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # -----------------------------------------------------------------------------
 FROM base AS deps
 
-COPY requirements.txt .
+COPY requirements.txt requirements-prototype.txt ./
 RUN pip install --upgrade pip && \
     pip install -r requirements-prototype.txt
 
