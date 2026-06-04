@@ -17,6 +17,18 @@ settings = get_settings()
 
 db_url = str(settings.database_url)
 
+
+def _normalize_async_db_url(url: str) -> str:
+    """Ensure PostgreSQL URLs use the asyncpg driver for async SQLAlchemy."""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return url
+
+
+db_url = _normalize_async_db_url(db_url)
+
 # SQLite needs special connect args for async
 connect_args = {}
 if db_url.startswith("sqlite"):

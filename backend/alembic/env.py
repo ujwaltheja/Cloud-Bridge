@@ -27,7 +27,18 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", str(settings.database_url))
+
+
+def _normalize_async_db_url(url: str) -> str:
+    """Ensure PostgreSQL URLs use the asyncpg driver for async Alembic runs."""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return url
+
+
+config.set_main_option("sqlalchemy.url", _normalize_async_db_url(str(settings.database_url)))
 
 
 def run_migrations_offline() -> None:
