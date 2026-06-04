@@ -1,0 +1,44 @@
+# Cloud Bridge Backend - Full / Production Requirements
+# Use this when you have a compatible Python version (3.12 or 3.13 recommended)
+# For quick local prototype on any Python, use: requirements-prototype.txt instead
+
+# Core Framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic>=2.11          # 2.11+ required for Python 3.14 (pre-built wheels, no Rust build)
+pydantic-settings>=2.7
+
+# Async Database
+aiosqlite==0.20.0
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.50
+alembic==1.14.0
+
+# Celery + Redis
+celery==5.4.0
+redis==5.2.0
+
+# Artifact Storage
+boto3==1.35.70
+
+# Security
+cryptography==44.0.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Logging foundations
+structlog==24.4.0
+python-json-logger==2.0.7
+
+# Quality tools
+ruff==0.8.2
+mypy==1.13.0
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+httpx==0.28.0
+
+# Utilities
+python-dotenv==1.0.1
+tenacity==9.0.0
+reportlab==4.2.5

@@ -1,0 +1,50 @@
+# Cloud Bridge - Prototype / Local Development Requirements
+# Use this when running without Docker for quick iteration.
+# This file avoids packages that are hard to build on very new Python versions (like 3.14).
+
+# === Core Web Framework ===
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Pydantic 2.11+ ships pre-built wheels for Python 3.14 (no Rust build required).
+# Earlier versions (< 2.11) fail on Python 3.14 due to removed PyUnicode_* C APIs.
+pydantic>=2.11
+pydantic-settings>=2.7
+
+# === Database (Prototype uses SQLite) ===
+aiosqlite==0.20.0
+sqlalchemy[asyncio]==2.0.50
+alembic==1.14.0
+
+# === Background Tasks (Celery is optional for prototype) ===
+celery==5.4.0
+redis==5.2.0
+
+# === Artifact Storage ===
+boto3==1.35.70
+
+# === Security ===
+cryptography==43.0.3          # Slightly older for better compatibility
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# === Logging / Observability foundations ===
+structlog==24.4.0
+python-json-logger==2.0.7
+
+# === Development & Quality (optional but recommended) ===
+ruff==0.8.2
+mypy==1.13.0
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.0
+
+# === Utilities ===
+python-dotenv==1.0.1
+tenacity==9.0.0
+reportlab==4.2.5
+
+# NOTE: 
+# - asyncpg is NOT included here (it is only needed for real PostgreSQL)
+# - If you later want full PostgreSQL support, install asyncpg separately on Python 3.12/3.13
+# - pydantic >= 2.11 includes pre-built wheels for Python 3.14; earlier versions will fail

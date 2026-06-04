@@ -1,0 +1,2 @@
+[2m2026-06-01T13:30:05.825345Z[0m [[32m[1minfo     [0m] [1mapplication.startup           [0m [[0m[1m[34mcloudbridge.main[0m][0m [36mcorrelation_id[0m=[35mno-correlation[0m [36menv[0m=[35mdevelopment[0m
+[2m2026-06-01T13:30:05.830099Z[0m [[32m[1minfo     [0m] [1mapplication.shutdown          [0m [[0m[1m[34mcloudbridge.main[0m][0m [36mcorrelation_id[0m=[35mno-correlation[0m

@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+@layer components {
+  /* ── Cards ── */
+  .af-card {
+    @apply bg-white rounded-xl transition-all duration-300 ease-out;
+    border: 1px solid #d4ddf0;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.09), 0 1px 4px rgba(15, 23, 42, 0.05);
+  }
+  .dark .af-card {
+    background: rgba(22, 31, 48, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+  }
+  .af-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14), 0 4px 10px rgba(15, 23, 42, 0.07);
+  }
+  .dark .af-card:hover {
+    box-shadow: 0 12px 35px rgba(0, 161, 224, 0.08);
+  }
+
+  /* ── Gradient heading text ── */
+  .af-gradient-text {
+    background: linear-gradient(135deg, #00A1E0 0%, #7C3AED 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Monospace badge ── */
+  .af-mono-badge {
+    @apply font-mono text-xs px-2 py-0.5 rounded-md;
+    background: #edf2fb;
+    border: 1px solid #d4ddf0;
+    color: #4a5568;
+  }
+  .dark .af-mono-badge {
+    @apply bg-slate-800 border-slate-700 text-slate-400;
+  }
+
+  /* ── Status badges ── */
+  .status-success  { @apply text-emerald-500; }
+  .status-failed   { @apply text-red-500; }
+  .status-running, .status-in-progress, .status-deploying, .status-validating { @apply text-af-blue; }
+  .status-pending, .status-queued { @apply text-amber-400; }
+
+  /* ── Input ── */
+  .af-input {
+    @apply w-full rounded-lg px-3 py-2 text-sm text-slate-800
+           focus:outline-none focus:ring-2 focus:ring-af-blue/40
+           dark:bg-af-darkcard dark:border-white/10 dark:text-slate-100
+           dark:focus:ring-af-blue/30 transition;
+    border: 1px solid #d4ddf0;
+    background: #ffffff;
+  }
+
+  /* ── Primary button ── */
+  .af-btn-primary {
+    @apply px-5 py-2 rounded-lg font-semibold text-sm text-white
+           bg-af-blue hover:bg-sky-500 transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ── Secondary button ── */
+  .af-btn-secondary {
+    @apply px-4 py-1.5 rounded-lg text-sm font-medium
+           bg-slate-100 hover:bg-slate-200 text-slate-700
+           dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300
+           transition-colors;
+  }
+
+  /* ── Section card (form panels) ── */
+  .af-panel {
+    @apply bg-white dark:bg-af-darkcard rounded-xl p-6 mb-6;
+    border: 1px solid #d4ddf0;
+    border-color: #d4ddf0;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.09), 0 1px 4px rgba(15, 23, 42, 0.05);
+  }
+  .dark .af-panel {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+  }
+
+  /* ── Active nav tab — light mode ── */
+  .af-tab-active {
+    color: #00A1E0;
+    background: rgba(0, 161, 224, 0.12);
+    border-bottom: 2px solid #00A1E0;
+  }
+}
