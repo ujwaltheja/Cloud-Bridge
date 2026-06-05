@@ -61,16 +61,14 @@ class MetadataRetrievalService:
             try:
                 retrieve_metadata_task.delay(str(job.id))
             except Exception as delay_exc:
-                # In case delay raises (e.g. eager task raised despite wrapper),
-                # don't let it cause 500 on the create API. Mark the job failed.
-                logger = logging.getLogger(__name__)
-                logger.exception("Failed to delay retrieval task for job %s: %s", job.id, delay_exc)
-                job.status = "failed"
-                job.error_message = f"Failed to queue retrieval task: {str(delay_exc)[:300]}"
-                job.completed_at = datetime.utcnow()
-                await self.db.commit()
-                await self.db.refresh(job)
-                return job
+                # Celery/Redis not available (e.g. Redis auth failure, no broker configured).
+                # Fall back to direct in-process execution so the retrieval still works even
+                # when the Celery broker is unreachable or misconfigured in the environment.
+                logger.warning(
+                    "Celery queue unavailable for job %s (%s) — falling back to direct execution",
+                    job.id, delay_exc,
+                )
+                return await self._execute_retrieve(job)
             # Refresh after delay: in eager/dev this gets the status from the work
             # that just ran inside the task; in prod it remains queued.
             await self.db.refresh(job)

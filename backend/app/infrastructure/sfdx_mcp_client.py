@@ -31,6 +31,54 @@ logger = logging.getLogger("cloudbridge.sfdx_mcp")
 
 
 # ---------------------------------------------------------------------------
+# Env helpers — ensures sf CLI can always write its config dir
+# ---------------------------------------------------------------------------
+
+def _safe_sf_env(base_env: dict | None = None, alias: str = "cb") -> dict:
+    """
+    Return an os.environ copy safe for running sf/sfdx CLI subprocesses inside
+    Linux containers where the default HOME may be '/' (unwritable).
+
+    The sf CLI stores its config in $HOME/.sf (v2+) and $HOME/.sfdx (v1 compat).
+    When HOME is '/' or another unwritable path the process crashes with
+    'EACCES: permission denied, mkdir /.sf'.
+
+    Resolution: use a per-alias writable temp directory as HOME.
+    We also set SFDX_DISABLE_INSIGHTS and SFDX_AUTOUPDATE_DISABLE to prevent
+    sf from trying to write update/telemetry artefacts on startup.
+    """
+    env = (base_env or os.environ).copy()
+    current_home = env.get("HOME", "/")
+    # Test whether the current HOME's .sf dir is writable (create if missing)
+    sf_cfg_dir = os.path.join(current_home, ".sf")
+    home_ok = False
+    try:
+        os.makedirs(sf_cfg_dir, exist_ok=True)
+        home_ok = os.access(sf_cfg_dir, os.W_OK)
+    except Exception:
+        home_ok = False
+
+    if not home_ok:
+        # Use /tmp/sf-home-<alias> as a writable per-alias home
+        safe_home = os.path.join(tempfile.gettempdir(), f"sf-home-{alias}")
+        try:
+            os.makedirs(safe_home, exist_ok=True)
+        except Exception:
+            safe_home = tempfile.gettempdir()
+        env["HOME"] = safe_home
+        logger.debug("sf HOME override: %s → %s", current_home, safe_home)
+
+    # Suppress auto-update and telemetry attempts (they also write to HOME)
+    env.setdefault("SFDX_AUTOUPDATE_DISABLE", "true")
+    env.setdefault("SF_AUTOUPDATE_DISABLE", "true")
+    env.setdefault("SFDX_DISABLE_INSIGHTS", "true")
+    env.setdefault("SF_DISABLE_INSIGHTS", "true")
+    # Use generic keychain (avoids OS-level keyring calls in headless containers)
+    env.setdefault("SFDX_USE_GENERIC_UNIX_KEYCHAIN", "true")
+    return env
+
+
+# ---------------------------------------------------------------------------
 # Auth bridge: inject a Salesforce org into the local SFDX auth store
 # ---------------------------------------------------------------------------
 
@@ -73,7 +121,7 @@ async def _register_org_with_sfdx(
             cmd = [sf_exe, "org", "login", "access-token",
                    "--instance-url", inst_url, "--alias", alias, "--no-prompt", "--json"]
 
-        env = os.environ.copy()
+        env = _safe_sf_env(alias=alias)
         env["SF_ACCESS_TOKEN"] = access_token
 
         def run_subprocess():
@@ -363,7 +411,7 @@ def _run_sf_generate_manifest(
             "--json",
         ]
 
-    env = os.environ.copy()
+    env = _safe_sf_env(alias=alias)
     # For very large orgs, users can tune: export SF_LIST_METADATA_BATCH_SIZE=3
     # env.setdefault("SF_LIST_METADATA_BATCH_SIZE", "5")
 
@@ -546,7 +594,7 @@ async def retrieve_metadata_direct(
     logger.info("Running direct retrieve: %s (cwd=%s, wait=%smin)", " ".join(cmd), proj, wait_minutes)
 
     def run_retrieve_cmd():
-        env = os.environ.copy()
+        env = _safe_sf_env(alias=alias)
         # Provide the token directly for the retrieve command. The login step is still
         # performed to ensure the alias is registered in the local sf auth store, but
         # setting SF_ACCESS_TOKEN makes the operation more robust on cases where the
@@ -658,7 +706,7 @@ async def list_metadata_types_direct(
     logger.info("Running list metadata-types: %s (cwd=%s)", " ".join(cmd), proj)
 
     def run_list_types():
-        env = os.environ.copy()
+        env = _safe_sf_env(alias=alias)
         env["SF_ACCESS_TOKEN"] = access_token  # provide directly in case alias auth from login step is incomplete
         proc = subprocess.run(
             cmd,
@@ -793,7 +841,7 @@ async def list_metadata_members_direct(
     logger.info("Running list metadata members: %s (cwd=%s, type=%s, folder=%s)", " ".join(cmd), proj, metadata_type, folder)
 
     def run_list_members():
-        env = os.environ.copy()
+        env = _safe_sf_env(alias=alias)
         env["SF_ACCESS_TOKEN"] = access_token  # provide directly in case alias auth from login step is incomplete
         proc = subprocess.run(
             cmd,
@@ -960,7 +1008,7 @@ async def deploy_metadata_direct(
     logger.info("Running direct deploy: %s (cwd=%s, check_only=%s, test_level=%s, dry_run=%s)", " ".join(cmd), proj, check_only, test_level, use_dry_run)
 
     def run_deploy_cmd():
-        env = os.environ.copy()
+        env = _safe_sf_env(alias=alias)
         env["SF_ACCESS_TOKEN"] = access_token
         proc = subprocess.run(
             cmd,
@@ -1043,7 +1091,7 @@ async def quick_deploy_direct(
                "--job-id", job_id, "--target-org", alias, "--json", "--wait", str(wait_minutes)]
 
     def run_quick():
-        env = os.environ.copy()
+        env = _safe_sf_env(alias=alias)
         env["SF_ACCESS_TOKEN"] = access_token
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               timeout=120, check=False, cwd=proj, env=env)
