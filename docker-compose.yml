@@ -175,6 +175,7 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    user: "0:0"
     volumes:
       - ./frontend:/app
       - /app/node_modules
