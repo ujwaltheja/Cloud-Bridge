@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     backend_host: str = Field(default="0.0.0.0", alias="BACKEND_HOST")
     backend_port: int = Field(default=8000, alias="BACKEND_PORT")
+    backend_api_key: str = Field(..., alias="BACKEND_API_KEY")
     cors_origins: list[str] = Field(
         default=["http://localhost:5173"],
         alias="CORS_ORIGINS",

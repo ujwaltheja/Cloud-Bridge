@@ -16,12 +16,20 @@ function normalizeApiBaseUrl(rawUrl: string): string {
 }
 
 const apiBaseUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_HOST)
+const backendApiKey = (import.meta.env.VITE_BACKEND_API_KEY ?? '').trim()
 
 if (apiBaseUrl) {
   const originalFetch = window.fetch.bind(window)
   window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
     if (typeof input === 'string' && input.startsWith('/api/')) {
-      return originalFetch(`${apiBaseUrl}${input}`, init)
+      const headers = new Headers(init?.headers)
+      if (backendApiKey && !headers.has('X-API-Key')) {
+        headers.set('X-API-Key', backendApiKey)
+      }
+      return originalFetch(`${apiBaseUrl}${input}`, {
+        ...init,
+        headers,
+      })
     }
     return originalFetch(input, init)
   }

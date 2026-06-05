@@ -7,7 +7,7 @@ Production-grade, fully async, versioned API from day one.
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -25,6 +25,7 @@ from .api.v1 import (
     tasks,
     tools,
 )
+from .api.dependencies import require_api_key
 from .core.config import get_settings
 from .core.logging import configure_logging, get_logger
 
@@ -68,19 +69,20 @@ def create_application() -> FastAPI:
     )
 
     # Mount versioned API (PRIORITY: API versioning from day one)
+    protected_dependencies = [Depends(require_api_key)]
     app.include_router(health.router, prefix="/api/v1", tags=["Health"])
-    app.include_router(tasks.router, prefix="/api/v1", tags=["Tasks (PR1 Verification)"])
-    app.include_router(orgs.router, prefix="/api/v1")  # Org Management slice
-    app.include_router(retrievals.router, prefix="/api/v1")  # Metadata Retrieval slice
-    app.include_router(comparisons.router, prefix="/api/v1")  # Comparison Engine (new)
-    app.include_router(deployments.router, prefix="/api/v1")  # Deployment Engine (started)
-    app.include_router(impact_analysis.router, prefix="/api/v1")  # Impact Analysis & Dependency Intelligence
-    app.include_router(dependency_graph.router, prefix="/api/v1")  # AI Dependency Graph + Auto Package Builder
+    app.include_router(tasks.router, prefix="/api/v1", tags=["Tasks (PR1 Verification)"], dependencies=protected_dependencies)
+    app.include_router(orgs.router, prefix="/api/v1", dependencies=protected_dependencies)  # Org Management slice
+    app.include_router(retrievals.router, prefix="/api/v1", dependencies=protected_dependencies)  # Metadata Retrieval slice
+    app.include_router(comparisons.router, prefix="/api/v1", dependencies=protected_dependencies)  # Comparison Engine (new)
+    app.include_router(deployments.router, prefix="/api/v1", dependencies=protected_dependencies)  # Deployment Engine (started)
+    app.include_router(impact_analysis.router, prefix="/api/v1", dependencies=protected_dependencies)  # Impact Analysis & Dependency Intelligence
+    app.include_router(dependency_graph.router, prefix="/api/v1", dependencies=protected_dependencies)  # AI Dependency Graph + Auto Package Builder
     
     # Agent Orchestration APIs (Sprint 1)
-    app.include_router(agents.router, prefix="/api/v1")       # Agent Registry
-    app.include_router(tools.router, prefix="/api/v1")        # Tool Registry
-    app.include_router(sessions.router, prefix="/api/v1")     # Session & Context Management
+    app.include_router(agents.router, prefix="/api/v1", dependencies=protected_dependencies)       # Agent Registry
+    app.include_router(tools.router, prefix="/api/v1", dependencies=protected_dependencies)        # Tool Registry
+    app.include_router(sessions.router, prefix="/api/v1", dependencies=protected_dependencies)     # Session & Context Management
 
     # Root health check (convenience, not versioned)
     @app.get("/health", include_in_schema=False)
