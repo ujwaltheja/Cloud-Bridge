@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/pages/comparisons.tsx","./src/pages/deployments.tsx","./src/pages/impactanalysis.tsx","./src/pages/oauthcallback.tsx","./src/pages/orgs.tsx","./src/pages/retrievals.tsx"],"version":"5.7.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/pages/comparisons.tsx","./src/pages/dependencygraph.tsx","./src/pages/deployments.tsx","./src/pages/impactanalysis.tsx","./src/pages/oauthcallback.tsx","./src/pages/orgs.tsx","./src/pages/retrievals.tsx"],"version":"5.7.3"}

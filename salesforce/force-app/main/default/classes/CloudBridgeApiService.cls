@@ -7,6 +7,12 @@ public with sharing class CloudBridgeApiService {
         }
 
         String trimmed = rawUrl.trim();
+        if (trimmed.toLowerCase().endsWith('/api/v1/docs')) {
+            trimmed = trimmed.substring(0, trimmed.length() - '/api/v1/docs'.length());
+        }
+        if (trimmed.toLowerCase().endsWith('/api/v1')) {
+            trimmed = trimmed.substring(0, trimmed.length() - '/api/v1'.length());
+        }
         if (trimmed.endsWith('/')) {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
@@ -64,6 +70,14 @@ public with sharing class CloudBridgeApiService {
             return;
         }
 
+        String body = res.getBody();
+        String bodyLower = String.isBlank(body) ? '' : body.toLowerCase();
+        if (code == 503 && bodyLower.contains('application is not available')) {
+            throw new AuraHandledException(
+                'Cloud Bridge API is unavailable (503). Verify CloudBridge_Base_Url route and ensure backend pods are running. Current base URL: ' + getBaseUrl()
+            );
+        }
+
         String message = 'Cloud Bridge API error: ' + String.valueOf(code);
         try {
             Map<String, Object> err = parseJsonBody(res);
@@ -73,8 +87,12 @@ public with sharing class CloudBridgeApiService {
                 message += ' - ' + String.valueOf(err.get('error'));
             }
         } catch (Exception ignoreErr) {
-            if (!String.isBlank(res.getBody())) {
-                message += ' - ' + res.getBody();
+            if (!String.isBlank(body)) {
+                String compactBody = body.replaceAll('<[^>]+>', ' ').replaceAll('\\s+', ' ').trim();
+                if (compactBody.length() > 300) {
+                    compactBody = compactBody.substring(0, 300) + '...';
+                }
+                message += ' - ' + compactBody;
             }
         }
 

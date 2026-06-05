@@ -112,6 +112,46 @@ class SalesforceAuthService:
             "id": tokens.get("id"),
         }
 
+    async def refresh_access_token(
+        self,
+        refresh_token: str,
+        client_id: str,
+        client_secret: str | None = None,
+        org_type: str = "production",
+    ) -> dict:
+        """Refresh an expired Salesforce access token using OAuth refresh token flow."""
+        login_url = (
+            "https://test.salesforce.com"
+            if org_type in ("sandbox", "scratch")
+            else "https://login.salesforce.com"
+        )
+
+        token_url = f"{login_url}/services/oauth2/token"
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": client_id,
+        }
+        if client_secret:
+            data["client_secret"] = client_secret
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(token_url, data=data)
+            if response.status_code != 200:
+                try:
+                    err_body = response.json()
+                    detail = err_body.get("error_description") or err_body.get("error") or response.text
+                except Exception:
+                    detail = response.text
+                raise Exception(f"Salesforce token refresh failed ({response.status_code}): {detail}")
+            tokens = response.json()
+
+        return {
+            "access_token": tokens["access_token"],
+            "instance_url": tokens.get("instance_url"),
+            "id": tokens.get("id"),
+        }
+
     # ------------------------------------------------------------------
     # JWT Bearer Token Flow (Server-to-Server)
     # ------------------------------------------------------------------

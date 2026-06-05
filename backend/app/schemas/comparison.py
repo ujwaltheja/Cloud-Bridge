@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ComparisonCreate(BaseModel):
@@ -10,6 +10,8 @@ class ComparisonCreate(BaseModel):
     target_retrieval_id: UUID
 
 class ComparisonResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     source_retrieval_id: UUID
     target_retrieval_id: UUID
@@ -22,5 +24,3 @@ class ComparisonResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True

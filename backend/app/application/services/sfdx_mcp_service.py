@@ -20,8 +20,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.salesforce_auth import SalesforceAuthService
 from app.infrastructure.db.models import Deployment, MetadataRetrieval, SalesforceOrg
-from app.infrastructure.encryption import decrypt
+from app.infrastructure.encryption import decrypt, encrypt
 from app.infrastructure.sfdx_mcp_client import (
     SFDXMCPClient,
     list_metadata_members_direct,
@@ -34,6 +35,7 @@ from app.infrastructure.sfdx_mcp_client import (
 )
 
 logger = logging.getLogger("cloudbridge.sfdx_mcp_service")
+sf_auth = SalesforceAuthService()
 
 
 def _ensure_manifest_from_xml(package_xml: str, project_dir: str) -> str:
@@ -65,6 +67,43 @@ class SFDXMCPService:
             select(SalesforceOrg).where(SalesforceOrg.id == org_id)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    def _is_auth_error(exc: Exception) -> bool:
+        msg = str(exc).lower()
+        markers = (
+            "authentication required",
+            "invalid session id",
+            "session expired",
+            "expired access",
+            "invalid_grant",
+            "oauth",
+        )
+        return any(m in msg for m in markers)
+
+    async def _refresh_org_access_token(self, org: SalesforceOrg) -> str | None:
+        """Attempt to refresh OAuth access token using stored refresh token and client details."""
+        if not org.encrypted_refresh_token or not org.client_id:
+            return None
+
+        try:
+            refresh_token = decrypt(org.encrypted_refresh_token)
+            client_secret = decrypt(org.encrypted_client_secret) if org.encrypted_client_secret else None
+            refreshed = await sf_auth.refresh_access_token(
+                refresh_token=refresh_token,
+                client_id=org.client_id,
+                client_secret=client_secret,
+                org_type=org.org_type,
+            )
+            new_access_token = refreshed["access_token"]
+            org.encrypted_access_token = encrypt(new_access_token)
+            if refreshed.get("instance_url"):
+                org.instance_url = refreshed["instance_url"]
+            await self.db.commit()
+            return new_access_token
+        except Exception as refresh_exc:
+            logger.warning("Token refresh failed for org %s: %s", org.id, refresh_exc)
+            return None
 
     @staticmethod
     def _get_project_dir() -> str:
@@ -228,14 +267,30 @@ class SFDXMCPService:
         alias = f"cb-{str(org.id)[:8]}"
 
         try:
-            result = await retrieve_metadata_direct(
-                access_token=access_token,
-                instance_url=org.instance_url,
-                alias=alias,
-                package_xml=job.package_xml,
-                project_dir=proj,
-                wait_minutes=20,
-            )
+            try:
+                result = await retrieve_metadata_direct(
+                    access_token=access_token,
+                    instance_url=org.instance_url,
+                    alias=alias,
+                    package_xml=job.package_xml,
+                    project_dir=proj,
+                    wait_minutes=20,
+                )
+            except Exception as first_exc:
+                if not self._is_auth_error(first_exc):
+                    raise
+                refreshed_access = await self._refresh_org_access_token(org)
+                if not refreshed_access:
+                    raise
+                access_token = refreshed_access
+                result = await retrieve_metadata_direct(
+                    access_token=access_token,
+                    instance_url=org.instance_url,
+                    alias=alias,
+                    package_xml=job.package_xml,
+                    project_dir=proj,
+                    wait_minutes=20,
+                )
 
             # Persist the *actual* manifest used into the job (key for Complete Backup).
             # Only when UI sent the complete sentinel token (for "Complete Org Backup" mode),
@@ -369,12 +424,25 @@ class SFDXMCPService:
             access_token = decrypt(org.encrypted_access_token)
             alias = f"cb-{str(org.id)[:8]}"
             proj = self._get_project_dir()
-            types = await list_metadata_types_direct(
-                access_token=access_token,
-                instance_url=org.instance_url,
-                alias=alias,
-                project_dir=proj,
-            )
+            try:
+                types = await list_metadata_types_direct(
+                    access_token=access_token,
+                    instance_url=org.instance_url,
+                    alias=alias,
+                    project_dir=proj,
+                )
+            except Exception as first_exc:
+                if not self._is_auth_error(first_exc):
+                    raise
+                refreshed_access = await self._refresh_org_access_token(org)
+                if not refreshed_access:
+                    raise
+                types = await list_metadata_types_direct(
+                    access_token=refreshed_access,
+                    instance_url=org.instance_url,
+                    alias=alias,
+                    project_dir=proj,
+                )
             return types
         except Exception as exc:
             logger.exception("list_metadata_types failed for org %s", org_id)
@@ -393,14 +461,29 @@ class SFDXMCPService:
             access_token = decrypt(org.encrypted_access_token)
             alias = f"cb-{str(org.id)[:8]}"
             proj = self._get_project_dir()
-            members = await list_metadata_members_direct(
-                access_token=access_token,
-                instance_url=org.instance_url,
-                alias=alias,
-                metadata_type=metadata_type,
-                folder=folder,
-                project_dir=proj,
-            )
+            try:
+                members = await list_metadata_members_direct(
+                    access_token=access_token,
+                    instance_url=org.instance_url,
+                    alias=alias,
+                    metadata_type=metadata_type,
+                    folder=folder,
+                    project_dir=proj,
+                )
+            except Exception as first_exc:
+                if not self._is_auth_error(first_exc):
+                    raise
+                refreshed_access = await self._refresh_org_access_token(org)
+                if not refreshed_access:
+                    raise
+                members = await list_metadata_members_direct(
+                    access_token=refreshed_access,
+                    instance_url=org.instance_url,
+                    alias=alias,
+                    metadata_type=metadata_type,
+                    folder=folder,
+                    project_dir=proj,
+                )
             return members
         except Exception as exc:
             logger.exception("list_metadata_members failed for org %s type=%s", org_id, metadata_type)

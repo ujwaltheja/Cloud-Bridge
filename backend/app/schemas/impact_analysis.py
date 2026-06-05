@@ -7,7 +7,7 @@ Pydantic models for deployment impact analysis and dependency intelligence.
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +58,8 @@ class ImpactAnalysisRun(BaseModel):
 
 class MetadataDependencySchema(BaseModel):
     """Individual metadata dependency."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     analysis_id: UUID
     source_type: str
@@ -70,12 +72,12 @@ class MetadataDependencySchema(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
 
 
 class ImpactAnalysisSchema(BaseModel):
     """Complete impact analysis result."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     org_id: UUID
     retrieval_id: UUID | None = None
@@ -114,8 +116,6 @@ class ImpactAnalysisSchema(BaseModel):
     dependencies: list[MetadataDependencySchema] = []
     llm_used: bool | None = None
 
-    class Config:
-        from_attributes = True
 
 
 class ImpactAnalysisSummary(BaseModel):

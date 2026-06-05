@@ -11,12 +11,20 @@ import uuid
 from datetime import datetime
 
 import httpx
-from sqlalchemy import String, cast, func, select
+from sqlalchemy import String, cast, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.salesforce_auth import SalesforceAuthService
 from app.core.config import get_settings
-from app.infrastructure.db.models import SalesforceAuthMethod, SalesforceOrg
+from app.infrastructure.db.models import (
+    Deployment,
+    ImpactAnalysis,
+    MetadataComparison,
+    MetadataDependency,
+    MetadataRetrieval,
+    SalesforceAuthMethod,
+    SalesforceOrg,
+)
 from app.infrastructure.encryption import decrypt, encrypt
 from app.schemas.salesforce_org import (
     ConnectionTestResponse,
@@ -132,7 +140,62 @@ class SalesforceOrgService:
         if not org:
             return False
 
-        await self.db.delete(org)
+        # Explicit cleanup is required because MetadataComparison references
+        # orgs via source_org_id / target_org_id without ORM backrefs on org.
+        retrieval_ids_subq = (
+            select(MetadataRetrieval.id)
+            .where(MetadataRetrieval.org_id == org_id)
+            .subquery()
+        )
+
+        comparison_ids_subq = (
+            select(MetadataComparison.id)
+            .where(
+                or_(
+                    MetadataComparison.source_org_id == org_id,
+                    MetadataComparison.target_org_id == org_id,
+                    MetadataComparison.source_retrieval_id.in_(select(retrieval_ids_subq.c.id)),
+                    MetadataComparison.target_retrieval_id.in_(select(retrieval_ids_subq.c.id)),
+                )
+            )
+            .subquery()
+        )
+
+        # Null optional references before deleting comparisons.
+        await self.db.execute(
+            update(Deployment)
+            .where(Deployment.comparison_id.in_(select(comparison_ids_subq.c.id)))
+            .values(comparison_id=None)
+        )
+        await self.db.execute(
+            update(ImpactAnalysis)
+            .where(ImpactAnalysis.comparison_id.in_(select(comparison_ids_subq.c.id)))
+            .values(comparison_id=None)
+        )
+
+        # Remove org-owned analyses and their dependency edges.
+        analysis_ids_subq = (
+            select(ImpactAnalysis.id)
+            .where(ImpactAnalysis.org_id == org_id)
+            .subquery()
+        )
+        await self.db.execute(
+            delete(MetadataDependency).where(
+                MetadataDependency.analysis_id.in_(select(analysis_ids_subq.c.id))
+            )
+        )
+        await self.db.execute(delete(ImpactAnalysis).where(ImpactAnalysis.org_id == org_id))
+
+        # Remove org-owned deployments, comparisons, retrievals, then org.
+        await self.db.execute(delete(Deployment).where(Deployment.org_id == org_id))
+        await self.db.execute(
+            delete(MetadataComparison).where(
+                MetadataComparison.id.in_(select(comparison_ids_subq.c.id))
+            )
+        )
+        await self.db.execute(delete(MetadataRetrieval).where(MetadataRetrieval.org_id == org_id))
+        await self.db.execute(delete(SalesforceOrg).where(SalesforceOrg.id == org_id))
+
         await self.db.commit()
         return True
 
