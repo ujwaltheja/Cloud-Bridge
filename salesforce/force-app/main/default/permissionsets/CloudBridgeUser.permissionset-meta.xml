@@ -11,8 +11,4 @@
     <description>Access for Cloud Bridge Retrieval Studio LWC and Apex classes.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Cloud Bridge User</label>
-    <lightningComponentAccesses>
-        <lightningComponent>c:cloudBridgeRetrieval</lightningComponent>
-        <enabled>true</enabled>
-    </lightningComponentAccesses>
 </PermissionSet>

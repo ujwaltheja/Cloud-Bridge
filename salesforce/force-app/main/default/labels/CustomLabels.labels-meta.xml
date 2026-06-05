@@ -14,7 +14,7 @@
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>Default backend org UUID for retrieval jobs</shortDescription>
-        <value></value>
+        <value>SET_ME_ORG_UUID</value>
     </labels>
     <labels>
         <fullName>CloudBridge_Api_Key</fullName>
@@ -22,6 +22,6 @@
         <language>en_US</language>
         <protected>false</protected>
         <shortDescription>Optional API key sent as x-api-key header</shortDescription>
-        <value></value>
+        <value>OPTIONAL_API_KEY</value>
     </labels>
 </CustomLabels>

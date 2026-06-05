@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "check:sfcli": "sf --version || sfdx --version || (echo Salesforce CLI ('sf' or 'sfdx') not found on PATH. Install it with: npm install -g @salesforce/cli or from https://developer.salesforce.com/tools/sfdxcli && exit 1)",
     "dev": "vite --configLoader runner",
     "build": "tsc -b && vite build --configLoader runner",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

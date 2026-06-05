@@ -75,7 +75,6 @@ public with sharing class CloudBridgeRetrievalController {
         }
 
         List<Object> rows = (List<Object>) parsed;
-        rows.sort(new RetrievalJobSorter());
 
         List<Object> limited = new List<Object>();
         Integer count = 0;
@@ -88,19 +87,5 @@ public with sharing class CloudBridgeRetrievalController {
         }
 
         return limited;
-    }
-
-    public class RetrievalJobSorter implements Comparator {
-        public Integer compare(Object a, Object b) {
-            Map<String, Object> left = (Map<String, Object>) a;
-            Map<String, Object> right = (Map<String, Object>) b;
-            String leftCreated = left.containsKey('created_at') ? String.valueOf(left.get('created_at')) : '';
-            String rightCreated = right.containsKey('created_at') ? String.valueOf(right.get('created_at')) : '';
-            if (leftCreated == rightCreated) {
-                return 0;
-            }
-            Integer cmp = leftCreated.compareTo(rightCreated);
-            return cmp > 0 ? -1 : 1;
-        }
     }
 }
