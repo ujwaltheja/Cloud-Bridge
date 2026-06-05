@@ -5,6 +5,7 @@ For PR 1 we keep this very lightweight. In later PRs we can evolve this
 into a proper DI container if needed.
 """
 
+import logging
 from functools import lru_cache
 
 from app.core.config import get_settings
@@ -13,24 +14,34 @@ from app.infrastructure.adapters.artifact.local import LocalFilesystemArtifactSt
 from app.infrastructure.adapters.artifact.s3 import S3ArtifactStore
 from app.infrastructure.encryption import decrypt, encrypt
 
+_di_logger = logging.getLogger(__name__)
+
 
 @lru_cache
 def get_artifact_store() -> ArtifactStore:
     """
     Returns the configured ArtifactStore implementation.
 
-    In development we default to the local filesystem store.
-    When MINIO / S3 is properly configured and desired, we can switch
-    via environment variable in the future.
+    Prefers S3/MinIO when AWS_ENDPOINT_URL points at a MinIO host, but
+    validates connectivity first.  Falls back to local filesystem if MinIO
+    is unreachable (e.g. not deployed in K8s), so artifact saves never fail
+    silently and leave jobs with artifact_key=null.
     """
     settings = get_settings()
 
-    # For PR 1 we default to LocalFilesystem for simplicity and speed.
-    # The S3 implementation is fully wired and ready.
     if settings.aws_endpoint_url and "minio" in settings.aws_endpoint_url.lower():
-        # If we're pointing at MinIO, prefer the S3 adapter
-        return S3ArtifactStore()
+        try:
+            store = S3ArtifactStore()
+            store.client.list_buckets()  # quick reachability check
+            _di_logger.info("Artifact store: MinIO/S3 at %s", settings.aws_endpoint_url)
+            return store
+        except Exception as exc:
+            _di_logger.warning(
+                "MinIO at %s unreachable (%s) — using local filesystem artifact store",
+                settings.aws_endpoint_url, exc,
+            )
 
+    _di_logger.info("Artifact store: local filesystem (/app/artifacts)")
     return LocalFilesystemArtifactStore()
 
 
