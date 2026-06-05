@@ -34,6 +34,7 @@ class MetadataRetrievalService:
         job = MetadataRetrieval(
             org_id=org_id,
             package_xml=package_xml,
+            description=description,
             status="queued",
         )
         self.db.add(job)

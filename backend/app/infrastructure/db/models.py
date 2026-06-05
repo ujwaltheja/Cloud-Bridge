@@ -117,6 +117,7 @@ class MetadataRetrieval(Base, TimestampMixin):
     org_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("salesforce_orgs.id"), nullable=False)
 
     package_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(String)
     status: Mapped[str] = mapped_column(String(50), default="queued", nullable=False, index=True)
     artifact_key: Mapped[str | None] = mapped_column(String)
 

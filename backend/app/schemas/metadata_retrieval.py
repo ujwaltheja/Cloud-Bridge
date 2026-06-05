@@ -19,6 +19,7 @@ class MetadataRetrievalResponse(BaseModel):
     org_id: UUID
     status: str
     package_xml: str
+    description: str | None = None
     artifact_key: str | None = None
     error_message: str | None = None
     started_at: datetime | None = None

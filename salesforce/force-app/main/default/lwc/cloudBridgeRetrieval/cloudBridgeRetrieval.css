@@ -124,6 +124,13 @@
     font-size: 0.82rem;
 }
 
+.desc {
+    grid-column: 1 / -1;
+    color: #4f5f7a;
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+}
+
 .mono {
     font-family: "Consolas", "Courier New", monospace;
 }

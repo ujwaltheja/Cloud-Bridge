@@ -119,6 +119,9 @@
                     <div class="job-box">
                         <p><strong>Job ID:</strong> {currentJob.id}</p>
                         <p><strong>Status:</strong> {currentJob.status}</p>
+                        <template if:true={currentJob.description}>
+                            <p><strong>Requester:</strong> {currentJob.description}</p>
+                        </template>
                         <template if:true={currentJob.error_message}>
                             <p class="error">{currentJob.error_message}</p>
                         </template>
@@ -149,6 +152,7 @@
                                 <span class="mono">{job.shortId}</span>
                                 <span>{job.status}</span>
                                 <span>{job.created_at}</span>
+                                <span class="desc">{job.description}</span>
                             </div>
                         </template>
                     </div>

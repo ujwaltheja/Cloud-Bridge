@@ -215,7 +215,8 @@ export default class CloudBridgeRetrieval extends LightningElement {
             const jobs = await listRecentRetrievalJobs({ limitSize: 10 });
             this.recentJobs = (jobs || []).map((job) => ({
                 ...job,
-                shortId: job.id ? String(job.id).substring(0, 8) : 'unknown'
+                shortId: job.id ? String(job.id).substring(0, 8) : 'unknown',
+                description: job.description || ''
             }));
         } catch (error) {
             this.showToast('Recent jobs load failed', this.parseError(error), 'warning');
