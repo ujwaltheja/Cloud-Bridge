@@ -89,7 +89,8 @@ def _safe_sf_env(base_env: dict | None = None, alias: str = "cb") -> dict:
     env["SF_DISABLE_TELEMETRY"] = "true"
     env["SFDX_DISABLE_TELEMETRY"] = "true"
     # Generic keychain avoids OS-level keyring calls in headless containers
-    env["SFDX_USE_GENERIC_UNIX_KEYCHAIN"] = "true"
+    env["SF_USE_GENERIC_UNIX_KEYCHAIN"] = "true"      # current name
+    env["SFDX_USE_GENERIC_UNIX_KEYCHAIN"] = "true"    # legacy compat
 
     logger.debug("sf env: HOME=%s SF_GLOBAL_DIR=%s SF_LOG_FILE=%s", safe_home, sf_global, sf_log_file)
     return env

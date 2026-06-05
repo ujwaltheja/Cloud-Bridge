@@ -11,12 +11,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # System dependencies (needed for asyncpg, psycopg, etc.)
+# nodejs/npm installed separately via NodeSource to get Node 20 (Debian Bookworm
+# ships Node 18 which lacks the /v regex flag required by newer SF CLI versions).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
-    nodejs \
-    npm \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Salesforce CLI for metadata retrieve/deploy operations.
