@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 import httpx
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.salesforce_auth import SalesforceAuthService
@@ -124,10 +124,13 @@ class SalesforceOrgService:
         return None
 
     async def delete_org(self, org_id: uuid.UUID) -> bool:
-        stmt = delete(SalesforceOrg).where(func.replace(SalesforceOrg.id, "-", "") == org_id.hex)
-        result = await self.db.execute(stmt)
+        org = await self._get_org_row(org_id)
+        if not org:
+            return False
+
+        await self.db.delete(org)
         await self.db.commit()
-        return (result.rowcount or 0) > 0
+        return True
 
     # ------------------------------------------------------------------
     # OAuth Flow Helpers
