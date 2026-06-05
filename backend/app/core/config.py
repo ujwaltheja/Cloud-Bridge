@@ -6,6 +6,7 @@ All configuration is loaded from environment variables with sensible defaults.
 """
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -69,6 +70,12 @@ class Settings(BaseSettings):
         default=["http://localhost:5173"],
         alias="CORS_ORIGINS",
     )
+    cors_origin_regex: str | None = Field(default=None, alias="CORS_ORIGIN_REGEX")
+
+    @staticmethod
+    def _normalize_origin(origin: str) -> str:
+        cleaned = origin.strip().strip("\"'")
+        return cleaned.rstrip("/")
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -76,10 +83,28 @@ class Settings(BaseSettings):
         """Accept both JSON array and comma-separated string formats."""
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
+                if isinstance(parsed, str):
+                    return [cls._normalize_origin(parsed)]
+                if isinstance(parsed, list):
+                    return [cls._normalize_origin(origin) for origin in parsed if isinstance(origin, str) and origin.strip()]
+                return parsed
             except json.JSONDecodeError:
-                return [origin.strip() for origin in v.split(",") if origin.strip()]
+                return [cls._normalize_origin(origin) for origin in v.split(",") if origin.strip()]
+        if isinstance(v, list):
+            return [cls._normalize_origin(origin) for origin in v if isinstance(origin, str) and origin.strip()]
         return v
+
+    @field_validator("cors_origin_regex")
+    @classmethod
+    def validate_cors_origin_regex(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = v.strip().strip("\"'")
+        if not cleaned:
+            return None
+        re.compile(cleaned)
+        return cleaned
 
     # -------------------------------------------------------------------------
     # LLM Settings
