@@ -9,7 +9,7 @@ import zipfile
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,13 +23,31 @@ from app.schemas.metadata_retrieval import (
     MetadataRetrievalResponse,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/retrievals", tags=["Metadata Retrieval"])
+
+
+async def _run_retrieval_background(job_id: str) -> None:
+    """
+    FastAPI background task: runs retrieval in-process after the HTTP response
+    is sent.  Opens its own DB session so the endpoint's session can close cleanly.
+    No Celery worker required — works in any single-pod deployment.
+    """
+    from app.infrastructure.db.engine import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        try:
+            service = MetadataRetrievalService(db)
+            await service.start_retrieval(job_id, use_background=False)
+        except Exception:
+            logger.exception("Background retrieval failed for job %s", job_id)
 
 
 @router.post("", response_model=MetadataRetrievalResponse)
 async def create_retrieval_job(
     payload: MetadataRetrievalCreate,
-    use_background: bool = Query(False, description="Queue via Celery background task and return quickly with status=queued. The task will perform the actual sf retrieve."),
+    background_tasks: BackgroundTasks,
+    use_background: bool = Query(True, description="Return immediately with status=queued and run retrieval in the background."),
     db: AsyncSession = Depends(get_db_session),
 ):
     service = MetadataRetrievalService(db)
@@ -38,7 +56,11 @@ async def create_retrieval_job(
         package_xml=payload.package_xml,
         description=payload.description,
     )
-    updated_job = await service.start_retrieval(job.id, use_background=use_background)
+    if use_background:
+        # Schedule in-process background task — no Celery worker needed.
+        background_tasks.add_task(_run_retrieval_background, str(job.id))
+        return job  # status="queued"; task starts after response is sent
+    updated_job = await service.start_retrieval(job.id, use_background=False)
     return updated_job
 
 
