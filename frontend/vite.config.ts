@@ -12,6 +12,9 @@ export default defineConfig({
   cacheDir,
   server: {
     host: '0.0.0.0',
+    allowedHosts: [
+      'cloud-bridge-frontend-himalay-testing.bobathon-us-south-1-bx2-1-eed9cf6127dd1cc2309a78aba5f4061d-0000.us-south.containers.appdomain.cloud',
+    ],
     port: 3000,
     strictPort: true,
     proxy: {

@@ -4,7 +4,7 @@ import './index.css'
 import App from './App'
 
 const DEFAULT_API_HOST =
-  'https://cloud-bridge-himalay-testing.bobathon-us-south-1-bx2-1-eed9cf6127dd1cc2309a78aba5f4061d-0000.us-south.containers.appdomain.cloud'
+  'https://cloud-bridge-himalay-testing.bobathon-us-south-1-bx2-1-eed9cf6127dd1cc2309a78aba5f4061d-0000.us-south.containers.appdomain.cloud/api/v1/'
 
 function normalizeApiBaseUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim()
