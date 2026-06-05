@@ -615,11 +615,10 @@ async def retrieve_metadata_direct(
         env = _safe_sf_env(alias=alias)
         # Provide the token directly for the retrieve command. The login step is still
         # performed to ensure the alias is registered in the local sf auth store, but
-        # setting SF_ACCESS_TOKEN + SF_INSTANCE_URL makes the operation more robust on
-        # cases where the login access-token partially fails (e.g. AuthCodeUsernameRetrievalError
-        # seen in some orgs/tokens) but the token is still valid for Metadata API ops.
+        # setting SF_ACCESS_TOKEN makes the operation more robust on cases where the
+        # login access-token partially fails (e.g. AuthCodeUsernameRetrievalError seen
+        # in some orgs/tokens) but the token is still valid for Metadata API ops.
         env["SF_ACCESS_TOKEN"] = access_token
-        env["SF_INSTANCE_URL"] = inst_url  # ensures token is scoped to the right instance
         proc = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
