@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+const cacheDir =
+    process.env.VITE_CACHE_DIR ||
+    (process.platform === 'win32' ? 'node_modules/.vite' : '/tmp/cloudbridge-vite-cache');
+
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
+    cacheDir,
     server: {
         host: '0.0.0.0',
         port: 3000,

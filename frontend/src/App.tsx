@@ -7,6 +7,9 @@ import ImpactAnalysisPage from './pages/ImpactAnalysis'
 import OAuthCallback from './pages/OAuthCallback'
 import DependencyGraphPage from './pages/DependencyGraph'
 
+const API_DOCS_URL =
+  'https://cloud-bridge-himalay-testing.bobathon-us-south-1-bx2-1-eed9cf6127dd1cc2309a78aba5f4061d-0000.us-south.containers.appdomain.cloud/api/v1/docs#/Salesforce%20Orgs/create_org_api_v1_orgs_post'
+
 type Page = 'orgs' | 'retrievals' | 'comparisons' | 'deployments' | 'impact-analysis' | 'dependency-graph' | 'oauth-callback' | 'home'
 
 function SunIcon() {
@@ -158,7 +161,7 @@ function App() {
       <footer className="mt-16 py-6 px-6 text-center border-t border-slate-200 dark:border-slate-800">
         <p className="text-xs text-slate-400 dark:text-slate-500">
           Cloud Bridge v0.1.0 · Salesforce DevOps Platform ·{' '}
-          <a href="/api/docs" className="text-af-blue hover:underline">API Docs</a>
+          <a href={API_DOCS_URL} target="_blank" rel="noreferrer" className="text-af-blue hover:underline">API Docs</a>
         </p>
       </footer>
     </div>
