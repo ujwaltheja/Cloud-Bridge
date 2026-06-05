@@ -43,38 +43,55 @@ def _safe_sf_env(base_env: dict | None = None, alias: str = "cb") -> dict:
     When HOME is '/' or another unwritable path the process crashes with
     'EACCES: permission denied, mkdir /.sf'.
 
-    Resolution: use a per-alias writable temp directory as HOME.
-    We also set SFDX_DISABLE_INSIGHTS and SFDX_AUTOUPDATE_DISABLE to prevent
-    sf from trying to write update/telemetry artefacts on startup.
+    Resolution: unconditionally redirect HOME and ALL sf config dirs to a
+    per-alias writable temp directory so there is never a race against '/'.
+    We use setdefault for most flags but force-override the path vars.
     """
     env = (base_env or os.environ).copy()
-    current_home = env.get("HOME", "/")
-    # Test whether the current HOME's .sf dir is writable (create if missing)
-    sf_cfg_dir = os.path.join(current_home, ".sf")
-    home_ok = False
-    try:
-        os.makedirs(sf_cfg_dir, exist_ok=True)
-        home_ok = os.access(sf_cfg_dir, os.W_OK)
-    except Exception:
-        home_ok = False
 
-    if not home_ok:
-        # Use /tmp/sf-home-<alias> as a writable per-alias home
-        safe_home = os.path.join(tempfile.gettempdir(), f"sf-home-{alias}")
+    # Per-alias writable dirs — isolates concurrent operations and is always writable
+    safe_home = os.path.join(tempfile.gettempdir(), f"sf-home-{alias}")
+    sf_global = os.path.join(tempfile.gettempdir(), f"sf-cfg-{alias}")
+    sf_cache = os.path.join(tempfile.gettempdir(), f"sf-cache-{alias}")
+    sf_data = os.path.join(tempfile.gettempdir(), f"sf-data-{alias}")
+
+    for d in (safe_home, sf_global, sf_cache, sf_data):
         try:
-            os.makedirs(safe_home, exist_ok=True)
+            os.makedirs(d, exist_ok=True)
         except Exception:
-            safe_home = tempfile.gettempdir()
-        env["HOME"] = safe_home
-        logger.debug("sf HOME override: %s → %s", current_home, safe_home)
+            pass  # fallback: if even /tmp writes fail, sf will fail too — nothing more we can do
 
-    # Suppress auto-update and telemetry attempts (they also write to HOME)
-    env.setdefault("SFDX_AUTOUPDATE_DISABLE", "true")
-    env.setdefault("SF_AUTOUPDATE_DISABLE", "true")
-    env.setdefault("SFDX_DISABLE_INSIGHTS", "true")
-    env.setdefault("SF_DISABLE_INSIGHTS", "true")
-    # Use generic keychain (avoids OS-level keyring calls in headless containers)
-    env.setdefault("SFDX_USE_GENERIC_UNIX_KEYCHAIN", "true")
+    # Force-override (not setdefault) so existing container env vars can't re-inject '/'
+    env["HOME"] = safe_home
+    env["SF_GLOBAL_DIR"] = sf_global      # @salesforce/core v4+ (sf CLI v2)
+    env["SFDX_GLOBAL_DIR"] = sf_global    # @salesforce/core v3 compat
+    # XDG dirs used by oclif for cache/data; setting them avoids oclif falling back to HOME
+    env["XDG_CONFIG_HOME"] = sf_global
+    env["XDG_CACHE_HOME"] = sf_cache
+    env["XDG_DATA_HOME"] = sf_data
+
+    # Explicitly redirect the pino/thread-stream log file to a writable path.
+    # Without this, @salesforce/core computes the log path from HOME or SF_GLOBAL_DIR
+    # at logger-init time. In containers where that resolution races or falls back to '/',
+    # thread-stream tries mkdir '/.sf' and crashes with EACCES before any CLI output.
+    # Setting these env vars short-circuits the path computation entirely.
+    sf_log_file = os.path.join(sf_cache, "sf.log")
+    env["SF_LOG_FILE"] = sf_log_file              # @salesforce/core v5+ / sf CLI v2
+    env["SFDX_LOG_FILE_LOCATION"] = sf_log_file   # @salesforce/core v3 compat
+    env.setdefault("SF_LOG_LEVEL", "error")
+    env.setdefault("SFDX_LOG_LEVEL", "error")
+
+    # Suppress auto-update and telemetry (they also write to HOME)
+    env["SFDX_AUTOUPDATE_DISABLE"] = "true"
+    env["SF_AUTOUPDATE_DISABLE"] = "true"
+    env["SFDX_DISABLE_INSIGHTS"] = "true"
+    env["SF_DISABLE_INSIGHTS"] = "true"
+    env["SF_DISABLE_TELEMETRY"] = "true"
+    env["SFDX_DISABLE_TELEMETRY"] = "true"
+    # Generic keychain avoids OS-level keyring calls in headless containers
+    env["SFDX_USE_GENERIC_UNIX_KEYCHAIN"] = "true"
+
+    logger.debug("sf env: HOME=%s SF_GLOBAL_DIR=%s SF_LOG_FILE=%s", safe_home, sf_global, sf_log_file)
     return env
 
 

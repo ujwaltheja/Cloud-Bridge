@@ -44,6 +44,10 @@ celery_app.conf.update(
     task_soft_time_limit=25 * 60,  # 25 minutes soft limit
     worker_prefetch_multiplier=1,  # Important for long-running tasks
     task_acks_late=True,
+    # Route tasks to the "default" queue — must match the -Q flag on the worker.
+    # Without this, Celery publishes to its built-in "celery" queue while the
+    # worker only listens on "default" and "high_priority", so tasks never execute.
+    task_default_queue="default",
     # In development, execute tasks synchronously in-process (no broker needed).
     task_always_eager=_eager,
     task_eager_propagates=_eager,

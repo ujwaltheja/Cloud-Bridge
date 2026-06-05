@@ -100,7 +100,7 @@ services:
       - "8000:8000"
     environment:
       - APP_ENV=${APP_ENV:-development}
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://cloudbridge:cloudbridge_dev_password@postgres:5432/cloudbridge}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://myuser:mypassword@postgresql.himalay-testing.svc.cluster.local:5432/mydb}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
@@ -144,10 +144,10 @@ services:
         condition: service_healthy
     environment:
       - APP_ENV=${APP_ENV:-development}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://myuser:mypassword@postgresql.himalay-testing.svc.cluster.local:5432/mydb}
+      - REDIS_URL=${REDIS_URL:-redis://:password@redis.himalay-testing.svc.cluster.local:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:password@redis.himalay-testing.svc.cluster.local:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://:password@redis.himalay-testing.svc.cluster.local:6379/1}
       - FERNET_KEY=${FERNET_KEY}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-minioadmin}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-minioadmin_dev_password}
