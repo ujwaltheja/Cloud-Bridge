@@ -1,0 +1,146 @@
+.wrap {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    background: linear-gradient(150deg, #f4f8ff 0%, #f7fdf9 70%, #fff9ec 100%);
+}
+
+.panel {
+    border: 1px solid #dce7fb;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 30, 60, 0.07);
+}
+
+.retrieval-panel {
+    border-color: #cfe9dc;
+}
+
+.panel-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #14315b;
+    margin: 0 0 0.25rem;
+}
+
+.subtle {
+    color: #52627a;
+    font-size: 0.85rem;
+    margin-bottom: 0.9rem;
+}
+
+.row {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.row-three {
+    grid-template-columns: 1fr 2fr auto;
+}
+
+.row-two {
+    grid-template-columns: 1fr auto;
+}
+
+.align-end {
+    display: flex;
+    align-items: end;
+}
+
+.multi-actions {
+    gap: 0.5rem;
+}
+
+.table-head,
+.table-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.table-head {
+    font-weight: 700;
+    color: #2c3f62;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid #ebf1fd;
+}
+
+.table-row {
+    padding: 0.45rem 0;
+    border-bottom: 1px dashed #edf3ff;
+    font-size: 0.88rem;
+    color: #344967;
+}
+
+.members {
+    overflow-wrap: anywhere;
+}
+
+.xml-area {
+    margin-top: 0.6rem;
+}
+
+.status {
+    margin: 0.4rem 0 0.8rem;
+    color: #0a5f3d;
+    font-weight: 600;
+}
+
+.job-box {
+    border: 1px solid #dce8f9;
+    border-radius: 0.6rem;
+    background: #f8fbff;
+    padding: 0.8rem;
+}
+
+.error {
+    color: #bf2a2a;
+    font-weight: 600;
+}
+
+.download-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+
+.recent-list {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+}
+
+.recent-item {
+    display: grid;
+    grid-template-columns: 6rem 5rem auto;
+    gap: 0.6rem;
+    border: 1px solid #e4ebf8;
+    border-radius: 0.45rem;
+    padding: 0.45rem 0.55rem;
+    background: #fbfdff;
+    font-size: 0.82rem;
+}
+
+.mono {
+    font-family: "Consolas", "Courier New", monospace;
+}
+
+@media (max-width: 900px) {
+    .row-three,
+    .row-two,
+    .table-head,
+    .table-row {
+        grid-template-columns: 1fr;
+    }
+
+    .align-end {
+        align-items: start;
+    }
+
+    .recent-item {
+        grid-template-columns: 1fr;
+    }
+}

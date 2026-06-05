@@ -1,0 +1,159 @@
+<template>
+    <lightning-card title="Cloud Bridge Retrieval Studio" icon-name="custom:custom63">
+        <div class="wrap">
+            <section class="panel">
+                <h2 class="panel-title">Metadata XML Generator</h2>
+                <p class="subtle">Build package.xml from metadata type/member rows, then launch retrieval instantly.</p>
+
+                <div class="row row-three">
+                    <lightning-input
+                        label="Metadata Type"
+                        value={draftType}
+                        onchange={handleDraftTypeChange}
+                        placeholder="ApexClass, CustomObject, Layout"
+                    ></lightning-input>
+
+                    <lightning-input
+                        label="Members (comma separated)"
+                        value={draftMembers}
+                        onchange={handleDraftMembersChange}
+                        placeholder="AccountController, InvoiceService"
+                    ></lightning-input>
+
+                    <div class="align-end">
+                        <lightning-button
+                            variant="brand"
+                            label="Add Row"
+                            onclick={addMetadataRow}
+                        ></lightning-button>
+                    </div>
+                </div>
+
+                <template if:true={rows.length}>
+                    <div class="table-head">
+                        <span>Type</span>
+                        <span>Members</span>
+                        <span>Actions</span>
+                    </div>
+                    <template for:each={rows} for:item="row" for:index="index">
+                        <div key={row.id} class="table-row">
+                            <div>{row.type}</div>
+                            <div class="members">{row.memberPreview}</div>
+                            <div>
+                                <lightning-button-icon
+                                    icon-name="utility:delete"
+                                    variant="bare"
+                                    alternative-text="Delete row"
+                                    onclick={removeMetadataRow}
+                                    data-index={index}
+                                ></lightning-button-icon>
+                            </div>
+                        </div>
+                    </template>
+                </template>
+
+                <div class="row row-two">
+                    <lightning-input
+                        type="number"
+                        label="API Version"
+                        value={apiVersion}
+                        min="30"
+                        max="99"
+                        onchange={handleApiVersionChange}
+                    ></lightning-input>
+                    <div class="align-end multi-actions">
+                        <lightning-button
+                            label="Generate package.xml"
+                            onclick={generatePackageXml}
+                        ></lightning-button>
+                        <lightning-button
+                            label="Clear"
+                            onclick={clearAll}
+                        ></lightning-button>
+                    </div>
+                </div>
+
+                <lightning-textarea
+                    label="Generated package.xml"
+                    value={packageXml}
+                    onchange={handlePackageXmlChange}
+                    class="xml-area"
+                ></lightning-textarea>
+            </section>
+
+            <section class="panel retrieval-panel">
+                <h2 class="panel-title">Retrieval Job</h2>
+
+                <div class="row row-two">
+                    <lightning-input
+                        label="Backend org_id (UUID)"
+                        value={orgId}
+                        onchange={handleOrgIdChange}
+                        placeholder="Optional if CloudBridge_Default_Org_Id is configured"
+                    ></lightning-input>
+                    <div class="align-end">
+                        <lightning-button
+                            variant="brand"
+                            label="Trigger Retrieval"
+                            onclick={triggerRetrieval}
+                            disabled={isBusy}
+                        ></lightning-button>
+                    </div>
+                </div>
+
+                <div class="row row-two">
+                    <lightning-input
+                        label="Deployment Requester"
+                        value={deploymentRequester}
+                        onchange={handleDeploymentRequesterChange}
+                        placeholder="Name, email, or ticket id"
+                    ></lightning-input>
+                    <div></div>
+                </div>
+
+                <template if:true={statusMessage}>
+                    <p class="status">{statusMessage}</p>
+                </template>
+
+                <template if:true={currentJob.id}>
+                    <div class="job-box">
+                        <p><strong>Job ID:</strong> {currentJob.id}</p>
+                        <p><strong>Status:</strong> {currentJob.status}</p>
+                        <template if:true={currentJob.error_message}>
+                            <p class="error">{currentJob.error_message}</p>
+                        </template>
+
+                        <template if:true={isSuccess}>
+                            <div class="download-actions">
+                                <lightning-button
+                                    label="Download SFDX Zip"
+                                    onclick={downloadSfdx}
+                                ></lightning-button>
+                                <lightning-button
+                                    label="Download JSON"
+                                    onclick={downloadJson}
+                                ></lightning-button>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </section>
+
+            <section class="panel">
+                <h2 class="panel-title">Recent Jobs</h2>
+                <lightning-button label="Refresh" onclick={loadRecentJobs}></lightning-button>
+                <template if:true={recentJobs.length}>
+                    <div class="recent-list">
+                        <template for:each={recentJobs} for:item="job">
+                            <div key={job.id} class="recent-item">
+                                <span class="mono">{job.shortId}</span>
+                                <span>{job.status}</span>
+                                <span>{job.created_at}</span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </section>
+        </div>
+    </lightning-card>
+</template>
