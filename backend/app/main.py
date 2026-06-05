@@ -4,10 +4,11 @@ Cloud Bridge Backend - Main Application Entry Point
 Production-grade, fully async, versioned API from day one.
 """
 
+import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -67,6 +68,30 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Ensure CORS headers are present even on unhandled 500 errors.
+    # Starlette's CORSMiddleware only handles normal responses; exceptions
+    # bypass it, making the browser report a CORS error instead of the real 500.
+    @app.exception_handler(Exception)
+    async def _cors_aware_500_handler(request: Request, exc: Exception) -> JSONResponse:
+        origin = request.headers.get("origin", "")
+        headers: dict[str, str] = {}
+        if origin:
+            allowed = origin in settings.cors_origins
+            if not allowed and settings.cors_origin_regex:
+                try:
+                    allowed = bool(re.match(settings.cors_origin_regex, origin))
+                except re.error:
+                    pass
+            if allowed:
+                headers["Access-Control-Allow-Origin"] = origin
+                headers["Access-Control-Allow-Credentials"] = "true"
+        logger.error("unhandled_exception", path=str(request.url), exc=str(exc))
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+            headers=headers,
+        )
 
     # Mount versioned API (PRIORITY: API versioning from day one)
     protected_dependencies = [Depends(require_api_key)]
