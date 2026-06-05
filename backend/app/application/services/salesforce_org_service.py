@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.salesforce_auth import SalesforceAuthService
@@ -101,13 +101,17 @@ class SalesforceOrgService:
         """Lookup org row, with fallback for legacy int-stored PKs from pre-GUID sqlite bugs."""
         result = await self.db.execute(select(SalesforceOrg).where(SalesforceOrg.id == org_id))
         org = result.scalar_one_or_none()
-        if org is None and isinstance(org_id, uuid.UUID):
+        bind = self.db.get_bind()
+        dialect = bind.dialect.name if bind is not None else ""
+
+        # Legacy fallback paths are only relevant for older SQLite data.
+        if org is None and isinstance(org_id, uuid.UUID) and dialect == "sqlite":
             # Legacy SQLite rows may store UUIDs as 32-char hex (no dashes).
             result = await self.db.execute(
-                select(SalesforceOrg).where(func.replace(SalesforceOrg.id, "-", "") == org_id.hex)
+                select(SalesforceOrg).where(func.replace(cast(SalesforceOrg.id, String), "-", "") == org_id.hex)
             )
             org = result.scalar_one_or_none()
-        if org is None and isinstance(org_id, uuid.UUID):
+        if org is None and isinstance(org_id, uuid.UUID) and dialect == "sqlite":
             try:
                 result = await self.db.execute(
                     select(SalesforceOrg).where(SalesforceOrg.id == org_id.int)
