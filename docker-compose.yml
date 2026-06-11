@@ -1,11 +1,12 @@
-# Cloud Bridge - Production-grade Docker Compose
-# All services are configured for local development with good observability.
+# Cloud Bridge - Docker Compose
+# Defaults target the local Docker network.
+# Override via .env (or shell env) to point at cluster endpoints.
 
 version: "3.9"
 
 services:
   # ---------------------------------------------------------------------------
-  # PostgreSQL (async-friendly with asyncpg)
+  # PostgreSQL
   # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -43,8 +44,7 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # MinIO (S3-compatible object storage for artifacts)
-  # Priority: Artifact storage (MinIO) is a first-class citizen from PR 1
+  # MinIO (S3-compatible object storage)
   # ---------------------------------------------------------------------------
   minio:
     image: minio/minio:latest
@@ -65,7 +65,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Create the default bucket on startup (idempotent)
+  # Create the default bucket on startup (idempotent, targets local MinIO only)
   minio-init:
     image: minio/mc:latest
     container_name: cloudbridge-minio-init
@@ -82,7 +82,7 @@ services:
     restart: "no"
 
   # ---------------------------------------------------------------------------
-  # Backend (FastAPI) - Async, versioned API, production-grade foundation
+  # Backend (FastAPI)
   # ---------------------------------------------------------------------------
   backend:
     build:
@@ -100,18 +100,25 @@ services:
       - "8000:8000"
     environment:
       - APP_ENV=${APP_ENV:-development}
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://myuser:mypassword@postgresql.himalay-testing.svc.cluster.local:5432/mydb}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://cloudbridge:cloudbridge_dev_password@postgres:5432/cloudbridge}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
       - FERNET_KEY=${FERNET_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - BACKEND_API_KEY=${BACKEND_API_KEY}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-minioadmin}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-minioadmin_dev_password}
-      - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://minio:9000}
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_VERIFY_SSL=${AWS_VERIFY_SSL:-true}
       - MINIO_BUCKET=${MINIO_BUCKET:-cloudbridge-artifacts}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_ENDPOINT_URL=${LLM_ENDPOINT_URL}
+      - LLM_MODEL=${LLM_MODEL}
     volumes:
       - ./backend:/app
     command: >
@@ -128,7 +135,7 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Celery Worker - Strong observability foundations from PR 1
+  # Celery Worker
   # ---------------------------------------------------------------------------
   worker:
     build:
@@ -144,24 +151,30 @@ services:
         condition: service_healthy
     environment:
       - APP_ENV=${APP_ENV:-development}
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://myuser:mypassword@postgresql.himalay-testing.svc.cluster.local:5432/mydb}
-      - REDIS_URL=${REDIS_URL:-redis://:password@redis.himalay-testing.svc.cluster.local:6379/0}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:password@redis.himalay-testing.svc.cluster.local:6379/0}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://:password@redis.himalay-testing.svc.cluster.local:6379/1}
-      - FERNET_KEY=${FERNET_KEY:-RydLvWGjAy4714zB8DESZGWKlwNnRSRvNLJ9PwwBZpg=}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-Gob9OFA6hOfPYplcUC0P}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-jKtsEWzEl0N04sAor0l9W1Inekl3u9hTmT0GdKsq}
-      - AWS_ENDPOINT_URL=minio.minio-tenant.svc.cluster.local
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://cloudbridge:cloudbridge_dev_password@postgres:5432/cloudbridge}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      - FERNET_KEY=${FERNET_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - BACKEND_API_KEY=${BACKEND_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-minioadmin_dev_password}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://minio:9000}
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_VERIFY_SSL=${AWS_VERIFY_SSL:-true}
       - MINIO_BUCKET=${MINIO_BUCKET:-cloudbridge-artifacts}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_ENDPOINT_URL=${LLM_ENDPOINT_URL}
+      - LLM_MODEL=${LLM_MODEL}
     volumes:
       - ./backend:/app
     command: celery -A app.infrastructure.celery_app worker --loglevel=INFO -Q default,high_priority
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Frontend (React + Vite + TypeScript + Tailwind)
+  # Frontend (React + Vite)
   # ---------------------------------------------------------------------------
   frontend:
     build:
@@ -174,7 +187,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://cloud-bridge-himalay-testing.bobathon-us-south-1-bx2-1-eed9cf6127dd1cc2309a78aba5f4061d-0000.us-south.containers.appdomain.cloud/api/v1}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+      - VITE_BACKEND_API_KEY=${VITE_BACKEND_API_KEY}
     user: "0:0"
     volumes:
       - ./frontend:/app

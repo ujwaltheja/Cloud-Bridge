@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     aws_secret_access_key: str = Field(..., alias="AWS_SECRET_ACCESS_KEY")
     aws_endpoint_url: str = Field(..., alias="AWS_ENDPOINT_URL")
     aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
+    aws_verify_ssl: bool = Field(default=True, alias="AWS_VERIFY_SSL")
     minio_bucket: str = Field(default="cloudbridge-artifacts", alias="MINIO_BUCKET")
 
     # -------------------------------------------------------------------------

@@ -4,10 +4,12 @@ S3ArtifactStore - Implementation for MinIO and real S3.
 This implementation was elevated to first-class status in PR 1 per user priority.
 """
 
+import warnings
 from io import BytesIO
 from typing import BinaryIO
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app.core.config import get_settings
@@ -24,12 +26,19 @@ class S3ArtifactStore(ArtifactStore):
         settings = get_settings()
         self.bucket = settings.minio_bucket
 
+        verify = settings.aws_verify_ssl
+        if not verify:
+            # Cluster MinIO uses a self-signed cert; suppress the resulting urllib3 noise.
+            warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+
         self.client = boto3.client(
             "s3",
             endpoint_url=settings.aws_endpoint_url,
             aws_access_key_id=settings.aws_access_key_id,
             aws_secret_access_key=settings.aws_secret_access_key,
             region_name=settings.aws_region,
+            verify=verify,
+            config=Config(s3={"addressing_style": "path"}),
         )
 
     async def save(self, key: str, data: bytes | BinaryIO, content_type: str = "application/octet-stream") -> str:
