@@ -509,7 +509,8 @@ class ImpactAnalysisService:
             
         except Exception as e:
             logger.warning(f"Failed to gather rich historical context: {e}")
-        
+            await self.db.rollback()
+
         return context
 
     async def _calculate_release_score(self, analysis: ImpactAnalysis, historical_context: dict[str, Any]) -> int:

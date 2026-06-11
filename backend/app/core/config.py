@@ -109,6 +109,14 @@ class Settings(BaseSettings):
         return cleaned
 
     # -------------------------------------------------------------------------
+    # Salesforce OAuth
+    # -------------------------------------------------------------------------
+    sf_redirect_uri: str = Field(
+        default="http://localhost:3000/oauth/callback",
+        alias="SF_REDIRECT_URI",
+    )
+
+    # -------------------------------------------------------------------------
     # LLM Settings
     # -------------------------------------------------------------------------
     llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")

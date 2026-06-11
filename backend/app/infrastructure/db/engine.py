@@ -34,11 +34,24 @@ connect_args = {}
 if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
+# Pool kwargs — SQLite doesn't use a connection pool
+_pool_kwargs = (
+    {}
+    if db_url.startswith("sqlite")
+    else {
+        "pool_pre_ping": True,   # test connections before checkout; reconnects on stale conn
+        "pool_recycle": 270,     # recycle before the cluster's ~300s idle-timeout drops them
+        "pool_size": 10,
+        "max_overflow": 20,
+    }
+)
+
 # Create async engine
 engine: AsyncEngine = create_async_engine(
     db_url,
     echo=settings.is_development,
     connect_args=connect_args,
+    **_pool_kwargs,
 )
 
 # Session factory
@@ -54,4 +67,8 @@ async def get_db() -> AsyncSession:
     FastAPI dependency that yields an async database session.
     """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise

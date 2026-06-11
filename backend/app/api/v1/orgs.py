@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db_session
+from app.core.config import get_settings
 from app.application.services.salesforce_auth import SalesforceAuthService
 from app.application.services.salesforce_org_service import SalesforceOrgService
 from app.schemas.salesforce_org import (
@@ -141,5 +142,5 @@ async def _handle_oauth_callback(
 
     service = SalesforceOrgService(db)
     return await service.handle_oauth_callback(
-        code, org_id, redirect_uri or "http://localhost:3000/oauth/callback", code_verifier=code_verifier
+        code, org_id, redirect_uri or get_settings().sf_redirect_uri, code_verifier=code_verifier
     )
