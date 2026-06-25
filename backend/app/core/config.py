@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     aws_endpoint_url: str = Field(..., alias="AWS_ENDPOINT_URL")
     aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
     minio_bucket: str = Field(default="cloudbridge-artifacts", alias="MINIO_BUCKET")
+    artifact_store_backend: str = Field(default="local", alias="ARTIFACT_STORE_BACKEND")
+    local_artifact_path: str = Field(default="./artifacts", alias="LOCAL_ARTIFACT_PATH")
 
     # -------------------------------------------------------------------------
     # API

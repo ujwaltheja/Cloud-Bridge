@@ -316,9 +316,13 @@ class SFDXMCPService:
                 artifact_save_error = str(art_exc)
 
             if artifact_save_error:
-                # Still mark the job based on the retrieve result, but without artifact_key so downloads may not work.
-                job.status = "success" if result.get("success") else "failed"
-                if not result.get("success"):
+                job.status = "failed"
+                if result.get("success"):
+                    job.error_message = (
+                        "Salesforce retrieval completed, but Cloud Bridge could not save "
+                        f"the downloadable artifact: {artifact_save_error}"
+                    )[:500]
+                else:
                     errDetail = str(result.get("stderr") or result.get("error") or result.get("stdout") or "sf project retrieve start returned non-zero exit code")
                     job.error_message = errDetail[:500] + ("..." if len(errDetail) > 500 else "")
                 job.completed_at = datetime.utcnow()

@@ -25,13 +25,11 @@ def get_artifact_store() -> ArtifactStore:
     """
     settings = get_settings()
 
-    # For PR 1 we default to LocalFilesystem for simplicity and speed.
-    # The S3 implementation is fully wired and ready.
-    if settings.aws_endpoint_url and "minio" in settings.aws_endpoint_url.lower():
-        # If we're pointing at MinIO, prefer the S3 adapter
+    backend = settings.artifact_store_backend.lower().strip()
+    if backend in {"s3", "minio"}:
         return S3ArtifactStore()
 
-    return LocalFilesystemArtifactStore()
+    return LocalFilesystemArtifactStore(base_path=settings.local_artifact_path)
 
 
 def get_fernet_encryptor():

@@ -26,6 +26,57 @@ from app.schemas.metadata_retrieval import (
 router = APIRouter(prefix="/retrievals", tags=["Metadata Retrieval"])
 
 
+def _default_sfdx_project_json(project_name: str) -> str:
+    return json.dumps(
+        {
+            "packageDirectories": [{"path": "force-app", "default": True}],
+            "name": project_name,
+            "namespace": "",
+            "sfdcLoginUrl": "https://login.salesforce.com",
+            "sourceApiVersion": "62.0",
+        },
+        indent=2,
+    )
+
+
+def _normalize_sfdx_download_zip(source_zip_bytes: bytes, project_name: str) -> bytes:
+    """Wrap an internal source.zip as a user-friendly SFDX project folder."""
+    out = io.BytesIO()
+    seen: set[str] = set()
+
+    with zipfile.ZipFile(io.BytesIO(source_zip_bytes), "r") as src, zipfile.ZipFile(
+        out, "w", zipfile.ZIP_DEFLATED
+    ) as dst:
+        for info in src.infolist():
+            if info.is_dir():
+                continue
+            name = info.filename.replace("\\", "/").lstrip("/")
+            if (
+                not name
+                or name.startswith((".sf/", ".sfdx/"))
+                or "/.sf/" in name
+                or "/.sfdx/" in name
+            ):
+                continue
+            target = name if name.startswith(f"{project_name}/") else f"{project_name}/{name}"
+            dst.writestr(target, src.read(info.filename))
+            seen.add(target)
+
+        project_json_path = f"{project_name}/sfdx-project.json"
+        if project_json_path not in seen:
+            dst.writestr(project_json_path, _default_sfdx_project_json(project_name))
+
+        forceignore_path = f"{project_name}/.forceignore"
+        if forceignore_path not in seen:
+            dst.writestr(
+                forceignore_path,
+                "# Cloud Bridge SFDX retrieval artifact\n.sf/\n.sfdx/\nnode_modules/\n",
+            )
+
+    out.seek(0)
+    return out.read()
+
+
 @router.post("", response_model=MetadataRetrievalResponse)
 async def create_retrieval_job(
     payload: MetadataRetrievalCreate,
@@ -105,6 +156,8 @@ async def download_retrieval_artifact(
     if format == "sfdx" and isinstance(content, dict) and content.get("source_zip_key"):
         try:
             zip_bytes = await artifact_store.get(content["source_zip_key"])
+            project_name = f"retrieval_{str(job_id)[:8]}"
+            zip_bytes = _normalize_sfdx_download_zip(zip_bytes, project_name)
             filename = f"sfdx_project_{str(job_id)[:8]}.zip"
             return StreamingResponse(
                 io.BytesIO(zip_bytes),
